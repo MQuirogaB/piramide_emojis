@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pirámide-emoji · generador online</title>
+<meta name="description" content="Genera pirámides truncadas en 3D con agujero para tornillo M3 y emojis grabados en las caras, directamente en el navegador, sin instalar nada.">
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1f232c;
+    --border: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa2b1;
+    --accent: #f2c94c;
+    --accent-2: #f7d774;
+    --danger: #e5534b;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  #app {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    height: 100vh;
+  }
+  @media (max-width: 860px) {
+    #app { grid-template-columns: 1fr; grid-template-rows: auto 60vh; height: auto; min-height: 100vh; }
+  }
+  #panel {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+  }
+  #viewport-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  h1 {
+    font-size: 17px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h1 .emoji { font-size: 20px; }
+  .subtitle {
+    color: var(--muted);
+    font-size: 12.5px;
+    margin: 0 0 18px;
+    line-height: 1.4;
+  }
+  .subtitle a { color: var(--accent-2); }
+  fieldset {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px 14px;
+    margin: 0 0 14px;
+  }
+  legend {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    padding: 0 6px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .row label {
+    flex: 0 0 118px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .row input[type="number"] {
+    width: 72px;
+  }
+  input, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  input[type="range"] { flex: 1; padding: 0; accent-color: var(--accent); }
+  .face-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: var(--panel-2);
+  }
+  .face-card .row label { flex: 0 0 70px; }
+  .face-card .face-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--accent-2);
+    text-transform: capitalize;
+  }
+  .emoji-input {
+    width: 100%;
+    font-size: 20px;
+    text-align: center;
+  }
+  .mini-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .mini-row > div { flex: 1; }
+  .mini-row label {
+    display: block;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .mini-row input { width: 100%; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  #generate-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #1a1608;
+    margin-top: 4px;
+  }
+  #generate-btn:disabled { opacity: .55; cursor: wait; }
+  #download-btn {
+    width: 100%;
+    margin-top: 8px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  #download-btn:disabled { opacity: .4; cursor: not-allowed; }
+  #status {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 32px;
+    line-height: 1.4;
+    white-space: pre-line;
+  }
+  #status.error { color: var(--danger); }
+  #viewport {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+  #canvas-holder { width: 100%; height: 100%; display: block; }
+  #hint {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: rgba(15,17,21,.6);
+    padding: 4px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  #stats {
+    position: absolute;
+    right: 14px;
+    top: 12px;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: rgba(15,17,21,.6);
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: right;
+  }
+  details.advanced summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 2px 0 8px;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .toggle-row label { font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1><span class="emoji">🔺</span> Pirámide-emoji</h1>
+    <p class="subtitle">
+      Genera una pirámide truncada en 3D con agujero para tornillo M3 y un
+      emoji grabado en cada cara — todo en tu navegador, sin subir nada a
+      ningún servidor.
+      <a href="https://github.com/MQuirogaB/piramide_emojis" target="_blank" rel="noopener">Ver código / versión de línea de comandos ↗</a>
+    </p>
+
+    <fieldset>
+      <legend>Geometría</legend>
+      <div class="row"><label for="baseSize">Base (mm)</label><input type="range" id="baseSize" min="15" max="120" value="40"><input type="number" id="baseSizeNum" min="15" max="120" value="40"></div>
+      <div class="row"><label for="topSize">Cara sup. (mm)</label><input type="range" id="topSize" min="4" max="80" value="14"><input type="number" id="topSizeNum" min="4" max="80" value="14"></div>
+      <div class="row"><label for="height">Altura (mm)</label><input type="range" id="height" min="8" max="120" value="32"><input type="number" id="heightNum" min="8" max="120" value="32"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Agujero para el tornillo</legend>
+      <div class="toggle-row">
+        <input type="checkbox" id="holeEnabled" checked>
+        <label for="holeEnabled">Generar agujero pasante</label>
+      </div>
+      <div class="row"><label for="holeDia">Paso (mm)</label><input type="range" id="holeDia" min="0" max="10" step="0.1" value="3.4"><input type="number" id="holeDiaNum" min="0" max="10" step="0.1" value="3.4"></div>
+      <div class="row"><label for="headDia">Alojo cabeza (mm)</label><input type="range" id="headDia" min="0" max="16" step="0.1" value="6.2"><input type="number" id="headDiaNum" min="0" max="16" step="0.1" value="6.2"></div>
+      <div class="row"><label for="headDepth">Prof. alojo (mm)</label><input type="range" id="headDepth" min="0" max="10" step="0.1" value="3.2"><input type="number" id="headDepthNum" min="0" max="10" step="0.1" value="3.2"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Emojis por cara</legend>
+      <div id="faces"></div>
+      <details class="advanced">
+        <summary>Ajustes avanzados del grabado</summary>
+        <div class="row"><label for="mode">Modo</label>
+          <select id="mode">
+            <option value="engrave" selected>Grabado (hundido)</option>
+            <option value="emboss">Repujado (relieve)</option>
+          </select>
+        </div>
+        <div class="row"><label for="resolution">Resolución</label><input type="range" id="resolution" min="32" max="140" step="4" value="80"><input type="number" id="resolutionNum" min="32" max="140" value="80"></div>
+      </details>
+    </fieldset>
+
+    <button id="generate-btn" disabled>Generar pirámide</button>
+    <button id="download-btn" disabled>Descargar STL</button>
+    <div id="status">Cargando el motor 3D…</div>
+  </div>
+
+  <div id="viewport-col">
+    <div id="viewport">
+      <div id="canvas-holder"></div>
+      <div id="stats"></div>
+      <div id="hint">Arrastra para rotar · rueda para zoom</div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "manifold-3d": "https://cdn.jsdelivr.net/npm/manifold-3d@3.1.1/manifold.js"
+  }
+}
+</script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
