@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# STL generados localmente (los de examples/ se generan en CI y se pueden
+# publicar como artefactos, no hace falta versionarlos)
+*.stl
+!examples/*.stl
+
+# Caché de SVG de emojis descargados
+.emoji_cache/

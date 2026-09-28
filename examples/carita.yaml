@@ -1,0 +1,28 @@
+# Ejemplo: pirámide truncada con una carita sonriente en cada cara,
+# como en la imagen de referencia del proyecto.
+
+pyramid:
+  base_size: 40.0
+  top_size: 14.0
+  height: 32.0
+  screw_hole_diameter: 3.4      # paso libre M3
+  screw_head_diameter: 6.2
+  screw_head_depth: 3.2
+
+faces:
+  front:
+    emoji: "😐"
+    depth: 0.8
+    scale: 0.9
+  right:
+    emoji: "😀"
+    depth: 0.8
+    scale: 0.9
+  back:
+    emoji: "😎"
+    depth: 0.8
+    scale: 0.9
+  left:
+    emoji: "😉"
+    depth: 0.8
+    scale: 0.9
