@@ -2,8 +2,27 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import ManifoldModule from "manifold-3d";
 
-import { frustumMesh, allSideFaceFrames, stampMesh, cylinderHoles, SIDE_FACE_NAMES } from "./geometry.js";
+import { frustumMesh, allSideFaceFrames, stampMesh, cylinderHoles, faceNames } from "./geometry.js";
 import { emojiHeightmap } from "./emoji.js";
+import { EMOJI_PALETTE } from "./emoji-palette.js";
+
+// ---------------------------------------------------------------------
+// Especificación fija de la pirámide (calcada del STL de referencia del
+// usuario). No es editable desde la UI a propósito.
+// ---------------------------------------------------------------------
+
+const NUM_SIDES = 3;
+const RINGS = [
+  { size: 33.6, z: 0 },     // base (con el pequeño reborde)
+  { size: 40.7, z: 3.92 },  // punto más ancho del reborde
+  { size: 11.9, z: 27.51 }, // cara superior truncada
+];
+const HEIGHT = RINGS[RINGS.length - 1].z;
+const STOP_DIAMETER = 3;   // mm, tramo estrecho fijo ("tope")
+const STOP_DEPTH = 25.5;   // mm, profundidad a la que empieza el tope
+
+const FACE_NAMES = faceNames(NUM_SIDES);
+const DEFAULT_EMOJI = "😐";
 
 // ---------------------------------------------------------------------
 // Estado / elementos de UI
@@ -15,73 +34,127 @@ const generateBtn = el("generate-btn");
 const downloadBtn = el("download-btn");
 const statsEl = el("stats");
 
-const FACE_LABELS = { front: "frontal", right: "derecha", back: "trasera", left: "izquierda" };
-const DEFAULT_FACES = {
-  front: { emoji: "😐", depth: 0.8, scale: 0.9 },
-  right: { emoji: "😀", depth: 0.8, scale: 0.9 },
-  back: { emoji: "😎", depth: 0.8, scale: 0.9 },
-  left: { emoji: "😉", depth: 0.8, scale: 0.9 },
-};
-
 function setStatus(msg, isError = false) {
   statusEl.textContent = msg;
   statusEl.classList.toggle("error", isError);
 }
 
-// --- construir el panel de caras dinámicamente ---
-const facesContainer = el("faces");
-for (const name of SIDE_FACE_NAMES) {
-  const d = DEFAULT_FACES[name];
-  const card = document.createElement("div");
-  card.className = "face-card";
-  card.innerHTML = `
-    <p class="face-name">${FACE_LABELS[name]}</p>
-    <input class="emoji-input" type="text" id="emoji-${name}" value="${d.emoji}" maxlength="8">
-    <div class="mini-row">
-      <div><label for="depth-${name}">Profundidad (mm)</label>
-        <input type="number" id="depth-${name}" min="0" max="4" step="0.1" value="${d.depth}"></div>
-      <div><label for="scale-${name}">Escala (0-1)</label>
-        <input type="number" id="scale-${name}" min="0.1" max="1" step="0.05" value="${d.scale}"></div>
-    </div>
-  `;
-  facesContainer.appendChild(card);
+// --- estado de los emojis por cara ---
+const faceState = {}; // { [faceName]: { emoji, depth, scale } }
+for (const name of FACE_NAMES) {
+  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 0.8, scale: 0.85 };
 }
 
-// --- sincronizar cada par slider<->número ---
+function buildEmojiGrid(onPick) {
+  const grid = document.createElement("div");
+  grid.className = "emoji-grid";
+  for (const em of EMOJI_PALETTE) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = em;
+    b.addEventListener("click", () => onPick(em, grid));
+    grid.appendChild(b);
+  }
+  return grid;
+}
+
+function buildFaceCard(label, state, onChange) {
+  const card = document.createElement("div");
+  card.className = "face-card";
+
+  const title = document.createElement("p");
+  title.className = "face-name";
+  title.textContent = label;
+  card.appendChild(title);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "emoji-picker-btn";
+  const emojiSpan = document.createElement("span");
+  emojiSpan.textContent = state.emoji;
+  const hintSpan = document.createElement("span");
+  hintSpan.className = "hint";
+  hintSpan.textContent = "cambiar";
+  btn.appendChild(emojiSpan);
+  btn.appendChild(hintSpan);
+  card.appendChild(btn);
+
+  const grid = buildEmojiGrid((emoji, gridEl) => {
+    state.emoji = emoji;
+    emojiSpan.textContent = emoji;
+    gridEl.classList.remove("open");
+    onChange();
+  });
+  card.appendChild(grid);
+
+  btn.addEventListener("click", () => grid.classList.toggle("open"));
+
+  const miniRow = document.createElement("div");
+  miniRow.className = "mini-row";
+  miniRow.innerHTML = `
+    <div><label>Profundidad (mm)</label><input type="number" min="0" max="4" step="0.1" value="${state.depth}"></div>
+    <div><label>Escala (0-1)</label><input type="number" min="0.1" max="1" step="0.05" value="${state.scale}"></div>
+  `;
+  const [depthInput, scaleInput] = miniRow.querySelectorAll("input");
+  depthInput.addEventListener("input", () => { state.depth = Number(depthInput.value); onChange(); });
+  scaleInput.addEventListener("input", () => { state.scale = Number(scaleInput.value); onChange(); });
+  card.appendChild(miniRow);
+
+  return card;
+}
+
+const facesContainer = el("faces");
+const emojiModeSelect = el("emojiMode");
+
+function renderFaceCards() {
+  facesContainer.innerHTML = "";
+  const mode = emojiModeSelect.value;
+  if (mode === "same") {
+    // Un único selector cuyo valor se copia a las 3 caras.
+    const shared = faceState[FACE_NAMES[0]];
+    const card = buildFaceCard("Emoji (las 3 caras)", shared, () => {
+      for (const name of FACE_NAMES) faceState[name] = { ...shared };
+    });
+    facesContainer.appendChild(card);
+  } else {
+    for (const name of FACE_NAMES) {
+      const card = buildFaceCard(name, faceState[name], () => {});
+      facesContainer.appendChild(card);
+    }
+  }
+}
+emojiModeSelect.addEventListener("change", renderFaceCards);
+renderFaceCards();
+
+function readActiveFaces() {
+  if (emojiModeSelect.value === "same") {
+    const shared = faceState[FACE_NAMES[0]];
+    const out = {};
+    for (const name of FACE_NAMES) out[name] = { ...shared };
+    return out;
+  }
+  return { ...faceState };
+}
+
+// --- sincronizar slider<->número del agujero ---
 function linkRangeNumber(rangeId, numId) {
   const r = el(rangeId), n = el(numId);
-  if (!r || !n) return;
   r.addEventListener("input", () => { n.value = r.value; });
   n.addEventListener("input", () => { r.value = n.value; });
 }
-["baseSize", "topSize", "height", "holeDia", "headDia", "headDepth", "resolution"].forEach((id) =>
-  linkRangeNumber(id, id + "Num")
-);
+linkRangeNumber("holeDia", "holeDiaNum");
+linkRangeNumber("resolution", "resolutionNum");
 
 function readSpec() {
   return {
-    baseSize: Number(el("baseSizeNum").value),
-    topSize: Number(el("topSizeNum").value),
-    height: Number(el("heightNum").value),
+    numSides: NUM_SIDES,
+    rings: RINGS,
+    emojiMarginFraction: 0.18,
     holeEnabled: el("holeEnabled").checked,
     holeDiameter: Number(el("holeDiaNum").value),
-    headDiameter: Number(el("headDiaNum").value),
-    headDepth: Number(el("headDepthNum").value),
+    stopDiameter: STOP_DIAMETER,
+    stopDepth: STOP_DEPTH,
   };
-}
-
-function readFaces() {
-  const faces = {};
-  for (const name of SIDE_FACE_NAMES) {
-    const emoji = el(`emoji-${name}`).value.trim();
-    if (!emoji) continue;
-    faces[name] = {
-      emoji,
-      depth: Number(el(`depth-${name}`).value),
-      scale: Number(el(`scale-${name}`).value),
-    };
-  }
-  return faces;
 }
 
 // ---------------------------------------------------------------------
@@ -93,14 +166,14 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f1115);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 2000);
-camera.position.set(70, 55, 90);
+camera.position.set(60, 45, 75);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 holder.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 12, 0);
+controls.target.set(0, 10, 0);
 controls.enableDamping = true;
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x30302a, 0.9));
@@ -112,11 +185,9 @@ fill.position.set(-60, 30, -40);
 scene.add(fill);
 
 const material = new THREE.MeshStandardMaterial({
-  color: 0xf2c94c, roughness: 0.55, metalness: 0.05, flatShading: false,
+  color: 0xf2c94c, roughness: 0.55, metalness: 0.05,
 });
 
-// El modelo se construye en Z-up (igual que el STL); se envuelve en un grupo
-// rotado para mostrarlo Y-up en pantalla sin tocar los datos exportados.
 const displayGroup = new THREE.Group();
 displayGroup.rotation.x = -Math.PI / 2;
 scene.add(displayGroup);
@@ -150,11 +221,6 @@ function showPreview(vertProperties, triVerts) {
   geometry.computeVertexNormals();
   currentMesh = new THREE.Mesh(geometry, material);
   displayGroup.add(currentMesh);
-
-  geometry.computeBoundingSphere();
-  const r = geometry.boundingSphere.radius;
-  const c = geometry.boundingSphere.center;
-  controls.target.set(c.x, -c.z, c.y); // (el grupo ya está rotado -90º en X)
 }
 
 // ---------------------------------------------------------------------
@@ -165,12 +231,9 @@ function buildBinarySTL(vertProperties, triVerts) {
   const triCount = triVerts.length / 3;
   const buffer = new ArrayBuffer(84 + triCount * 50);
   const view = new DataView(buffer);
-  // cabecera de 80 bytes (se deja a cero) + nº de triángulos
   view.setUint32(80, triCount, true);
 
-  const gv = (i) => [
-    vertProperties[i * 3], vertProperties[i * 3 + 1], vertProperties[i * 3 + 2],
-  ];
+  const gv = (i) => [vertProperties[i * 3], vertProperties[i * 3 + 1], vertProperties[i * 3 + 2]];
 
   let offset = 84;
   for (let t = 0; t < triCount; t++) {
@@ -212,12 +275,11 @@ downloadBtn.addEventListener("click", () => {
 // Motor booleano (manifold-3d / WASM)
 // ---------------------------------------------------------------------
 
-let wasm = null;
 let ManifoldCls = null;
 let MeshCls = null;
 
 async function initManifold() {
-  wasm = await ManifoldModule();
+  const wasm = await ManifoldModule();
   wasm.setup();
   ManifoldCls = wasm.Manifold;
   MeshCls = wasm.Mesh;
@@ -234,14 +296,9 @@ function yieldToUI() {
 
 async function generate() {
   const spec = readSpec();
-  const faces = readFaces();
+  const faces = readActiveFaces();
   const mode = el("mode").value;
   const resolution = Number(el("resolutionNum").value);
-
-  if (spec.topSize >= spec.baseSize) {
-    setStatus("La cara superior debe ser menor que la base (pirámide truncada).", true);
-    return;
-  }
 
   generateBtn.disabled = true;
   const toDelete = [];
@@ -265,7 +322,7 @@ async function generate() {
     const frames = Object.fromEntries(allSideFaceFrames(spec).map((f) => [f.name, f]));
 
     for (const [name, faceSpec] of Object.entries(faces)) {
-      setStatus(`Grabando ${faceSpec.emoji} en la cara ${FACE_LABELS[name]}…`);
+      setStatus(`Grabando ${faceSpec.emoji} en la ${name}…`);
       await yieldToUI();
 
       const heightmap = emojiHeightmap(faceSpec.emoji, resolution);
@@ -317,7 +374,6 @@ generateBtn.addEventListener("click", generate);
     await initManifold();
     setStatus("Listo. Pulsa «Generar pirámide».");
     generateBtn.disabled = false;
-    // Genera un ejemplo automáticamente al cargar la página.
     generate();
   } catch (err) {
     console.error(err);

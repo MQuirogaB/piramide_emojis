@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pirámide-emoji · generador online</title>
-<meta name="description" content="Genera pirámides truncadas en 3D con agujero para tornillo M3 y emojis grabados en las caras, directamente en el navegador, sin instalar nada.">
+<meta name="description" content="Genera la pirámide triangular con agujero escalonado para tornillo y emojis grabados en las caras, directamente en el navegador, sin instalar nada.">
 <style>
   :root {
     --bg: #0f1115;
     --panel: #171a21;
     --panel-2: #1f232c;
+    --panel-3: #262b36;
     --border: #2a2f3a;
     --text: #e8eaed;
     --muted: #9aa2b1;
@@ -78,7 +79,7 @@
     margin: 8px 0;
   }
   .row label {
-    flex: 0 0 118px;
+    flex: 0 0 150px;
     font-size: 12.5px;
     color: var(--muted);
   }
@@ -93,7 +94,38 @@
     padding: 6px 8px;
     font-size: 13px;
   }
+  select { width: 100%; }
   input[type="range"] { flex: 1; padding: 0; accent-color: var(--accent); }
+
+  .fixed-dims {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .fixed-dims b { color: var(--text); font-weight: 600; }
+  .fixed-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    line-height: 1.4;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .toggle-row label { font-size: 12.5px; color: var(--muted); }
+
+  .fixed-hole-note {
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
   .face-card {
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -101,23 +133,58 @@
     margin-bottom: 8px;
     background: var(--panel-2);
   }
-  .face-card .row label { flex: 0 0 70px; }
   .face-card .face-name {
     font-size: 12px;
     font-weight: 600;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     color: var(--accent-2);
     text-transform: capitalize;
   }
-  .emoji-input {
+  .emoji-picker-btn {
     width: 100%;
-    font-size: 20px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 26px;
+    padding: 8px;
+    background: var(--panel-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text);
   }
+  .emoji-picker-btn .hint {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .emoji-grid {
+    display: none;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+    background: var(--panel-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+  }
+  .emoji-grid.open { display: grid; }
+  .emoji-grid button {
+    font-size: 19px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 0;
+    cursor: pointer;
+  }
+  .emoji-grid button:hover { background: var(--panel-2); }
+
   .mini-row {
     display: flex;
     gap: 8px;
-    margin-top: 6px;
+    margin-top: 8px;
   }
   .mini-row > div { flex: 1; }
   .mini-row label {
@@ -127,7 +194,8 @@
     margin-bottom: 3px;
   }
   .mini-row input { width: 100%; }
-  button {
+
+  button.action {
     font: inherit;
     cursor: pointer;
     border: none;
@@ -194,13 +262,6 @@
     color: var(--muted);
     margin: 2px 0 8px;
   }
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0;
-  }
-  .toggle-row label { font-size: 12.5px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -208,36 +269,46 @@
   <div id="panel">
     <h1><span class="emoji">🔺</span> Pirámide-emoji</h1>
     <p class="subtitle">
-      Genera una pirámide truncada en 3D con agujero para tornillo M3 y un
-      emoji grabado en cada cara — todo en tu navegador, sin subir nada a
-      ningún servidor.
-      <a href="https://github.com/MQuirogaB/piramide_emojis" target="_blank" rel="noopener">Ver código / versión de línea de comandos ↗</a>
+      Pirámide triangular con agujero escalonado para tornillo y un emoji
+      grabado en cada cara — todo en tu navegador, sin subir nada a ningún
+      servidor.
+      <a href="https://github.com/MQuirogaB/piramide_emojis" target="_blank" rel="noopener">Ver código ↗</a>
     </p>
 
     <fieldset>
-      <legend>Geometría</legend>
-      <div class="row"><label for="baseSize">Base (mm)</label><input type="range" id="baseSize" min="15" max="120" value="40"><input type="number" id="baseSizeNum" min="15" max="120" value="40"></div>
-      <div class="row"><label for="topSize">Cara sup. (mm)</label><input type="range" id="topSize" min="4" max="80" value="14"><input type="number" id="topSizeNum" min="4" max="80" value="14"></div>
-      <div class="row"><label for="height">Altura (mm)</label><input type="range" id="height" min="8" max="120" value="32"><input type="number" id="heightNum" min="8" max="120" value="32"></div>
+      <legend>Geometría (fija)</legend>
+      <div class="fixed-dims">
+        <span>Base</span><b>33.6 mm</b>
+        <span>Reborde</span><b>40.7 mm (a 3.9 mm)</b>
+        <span>Cara superior</span><b>11.9 mm</b>
+        <span>Altura total</span><b>27.51 mm</b>
+      </div>
+      <p class="fixed-note">Medidas calcadas del diseño de referencia; no son editables.</p>
     </fieldset>
 
     <fieldset>
       <legend>Agujero para el tornillo</legend>
       <div class="toggle-row">
         <input type="checkbox" id="holeEnabled" checked>
-        <label for="holeEnabled">Generar agujero pasante</label>
+        <label for="holeEnabled">Generar agujero</label>
       </div>
-      <div class="row"><label for="holeDia">Paso (mm)</label><input type="range" id="holeDia" min="0" max="10" step="0.1" value="3.4"><input type="number" id="holeDiaNum" min="0" max="10" step="0.1" value="3.4"></div>
-      <div class="row"><label for="headDia">Alojo cabeza (mm)</label><input type="range" id="headDia" min="0" max="16" step="0.1" value="6.2"><input type="number" id="headDiaNum" min="0" max="16" step="0.1" value="6.2"></div>
-      <div class="row"><label for="headDepth">Prof. alojo (mm)</label><input type="range" id="headDepth" min="0" max="10" step="0.1" value="3.2"><input type="number" id="headDepthNum" min="0" max="10" step="0.1" value="3.2"></div>
+      <div class="row"><label for="holeDia">Diámetro alojamiento (mm)</label><input type="range" id="holeDia" min="2" max="12" step="0.1" value="6"><input type="number" id="holeDiaNum" min="2" max="12" step="0.1" value="6"></div>
+      <p class="fixed-hole-note">A 25.5 mm de profundidad el agujero pasa a 3 mm de diámetro (tope fijo).</p>
     </fieldset>
 
     <fieldset>
       <legend>Emojis por cara</legend>
+      <div class="row">
+        <label for="emojiMode">Modo</label>
+        <select id="emojiMode">
+          <option value="same" selected>Mismo emoji en las 3 caras</option>
+          <option value="different">Emoji distinto por cara</option>
+        </select>
+      </div>
       <div id="faces"></div>
       <details class="advanced">
         <summary>Ajustes avanzados del grabado</summary>
-        <div class="row"><label for="mode">Modo</label>
+        <div class="row"><label for="mode">Estilo</label>
           <select id="mode">
             <option value="engrave" selected>Grabado (hundido)</option>
             <option value="emboss">Repujado (relieve)</option>
@@ -247,8 +318,8 @@
       </details>
     </fieldset>
 
-    <button id="generate-btn" disabled>Generar pirámide</button>
-    <button id="download-btn" disabled>Descargar STL</button>
+    <button class="action" id="generate-btn" disabled>Generar pirámide</button>
+    <button class="action" id="download-btn" disabled>Descargar STL</button>
     <div id="status">Cargando el motor 3D…</div>
   </div>
 

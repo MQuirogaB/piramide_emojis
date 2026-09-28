@@ -1,88 +1,112 @@
-// Geometría pura (sin dependencias): pirámide truncada + marcos de cada
-// cara lateral + malla del "sello" de grabado a partir de un heightmap.
-// Es un port directo de la versión Python (src/piramide_emoji/geometry.py
-// y engrave.py) — mismas fórmulas, mismo bobinado de triángulos.
-
-export const SIDE_FACE_NAMES = ["front", "right", "back", "left"];
+// Geometría pura (sin dependencias): pirámide truncada de base poligonal
+// regular (triangular) construida como una pila de troncos (permite un
+// pequeño "reborde" en la base antes del cuerpo principal, calcado del
+// STL de referencia) + marcos de cada cara lateral + malla del "sello" de
+// grabado a partir de un heightmap.
 
 /**
- * Vértices y triángulos (índices) del sólido macizo de la pirámide truncada.
- * Devuelve arrays planos listos para pasar a manifold-3d:
- *   { vertices: Float32Array [x,y,z,...], faces: Uint32Array [i,j,k,...] }
+ * Anillo de vértices de un polígono regular de `numSides` lados y lado
+ * `sideLength`, centrado en el origen, a la altura `z`. Los vértices están
+ * en sentido antihorario visto desde +Z, con una arista (no un vértice)
+ * centrada hacia -Y (para que la "cara 0" quede mirando al frente).
  */
-export function frustumMesh({ baseSize, topSize, height }) {
-  const hb = baseSize / 2;
-  const ht = topSize / 2;
-  const bottom = [
-    [-hb, -hb, 0], [hb, -hb, 0], [hb, hb, 0], [-hb, hb, 0],
-  ];
-  const top = [
-    [-ht, -ht, height], [ht, -ht, height], [ht, ht, height], [-ht, ht, height],
-  ];
-  const vertices = [...bottom, ...top].flat();
+function ngonRing(numSides, sideLength, z) {
+  const R = sideLength / (2 * Math.sin(Math.PI / numSides));
+  const start = -Math.PI / 2 - Math.PI / numSides;
+  const pts = [];
+  for (let k = 0; k < numSides; k++) {
+    const a = start + k * ((2 * Math.PI) / numSides);
+    pts.push([R * Math.cos(a), R * Math.sin(a), z]);
+  }
+  return pts;
+}
 
+export function faceNames(numSides) {
+  return Array.from({ length: numSides }, (_, i) => `cara${i + 1}`);
+}
+
+/**
+ * Vértices y triángulos (índices) del sólido macizo: una pila de troncos
+ * de pirámide definida por `spec.rings` (lista ordenada de
+ * `{ size, z }`, tamaño = lado del polígono en esa altura). Con 2 anillos
+ * es un tronco simple; con 3 (base, "pico" del reborde, cara superior) se
+ * obtiene el perfil con reborde en la base.
+ */
+export function frustumMesh({ numSides, rings }) {
+  const ringPts = rings.map((r) => ngonRing(numSides, r.size, r.z));
+  const nRings = ringPts.length;
+
+  const vertices = Float32Array.from(ringPts.flat().flat());
   const faces = [];
-  // tapa inferior (normal -Z)
-  faces.push(0, 2, 1, 0, 3, 2);
-  // tapa superior (normal +Z)
-  faces.push(4, 5, 6, 4, 6, 7);
-  // 4 caras laterales
-  for (let i = 0; i < 4; i++) {
-    const b0 = i, b1 = (i + 1) % 4;
-    const t0 = 4 + i, t1 = 4 + ((i + 1) % 4);
-    faces.push(b0, b1, t1, b0, t1, t0);
+
+  // tapa inferior (normal -Z): fan invertido desde el vértice 0 del primer anillo
+  for (let i = 1; i < numSides - 1; i++) faces.push(0, i + 1, i);
+  // tapa superior (normal +Z): fan directo desde el vértice 0 del último anillo
+  const topBase = (nRings - 1) * numSides;
+  for (let i = 1; i < numSides - 1; i++) faces.push(topBase, topBase + i, topBase + i + 1);
+
+  // caras laterales de cada segmento (entre anillos consecutivos)
+  for (let seg = 0; seg < nRings - 1; seg++) {
+    const baseIdx = seg * numSides;
+    const nextIdx = (seg + 1) * numSides;
+    for (let k = 0; k < numSides; k++) {
+      const b0 = baseIdx + k, b1 = baseIdx + ((k + 1) % numSides);
+      const t0 = nextIdx + k, t1 = nextIdx + ((k + 1) % numSides);
+      faces.push(b0, b1, t1, b0, t1, t0);
+    }
   }
 
-  return { vertices: Float32Array.from(vertices), faces: Uint32Array.from(faces) };
+  return { vertices, faces: Uint32Array.from(faces) };
 }
 
 /**
  * Marco de referencia (origen + ejes u,v,normal + extensión utilizable) de
- * la cara lateral `index` (0=front/-Y, 1=right/+X, 2=back/+Y, 3=left/-X).
+ * la cara lateral `index` del segmento `segmentIndex` (por defecto, el
+ * último segmento = el cuerpo principal, donde va el emoji).
  */
-export function faceFrame(spec, index) {
-  const hb = spec.baseSize / 2;
-  const ht = spec.topSize / 2;
-  const h = spec.height;
+export function faceFrame(spec, index, segmentIndex = spec.rings.length - 2) {
+  const n = spec.numSides;
+  const r0 = spec.rings[segmentIndex];
+  const r1 = spec.rings[segmentIndex + 1];
+  const bottom = ngonRing(n, r0.size, r0.z);
+  const top = ngonRing(n, r1.size, r1.z);
 
-  const bottomMid = [0, -hb, 0];
-  const topMid = [0, -ht, h];
-  let uHat0 = [1, 0, 0];
-  const vVec0 = sub(topMid, bottomMid);
-  const vLen0 = norm(vVec0);
-  let vHat0 = scale(vVec0, 1 / vLen0);
-  let normal0 = normalize(cross(uHat0, vHat0));
-  if (normal0[1] > 0) {
-    normal0 = scale(normal0, -1);
-    uHat0 = scale(uHat0, -1);
+  const b0 = bottom[index], b1 = bottom[(index + 1) % n];
+  const t0 = top[index], t1 = top[(index + 1) % n];
+
+  const bottomMid = midpoint(b0, b1);
+  const topMid = midpoint(t0, t1);
+
+  let uHat = normalize(sub(b1, b0));
+  const vVec = sub(topMid, bottomMid);
+  const vLen = norm(vVec);
+  const vHat = scale(vVec, 1 / vLen);
+
+  let normal = normalize(cross(uHat, vHat));
+  const outward = [bottomMid[0], bottomMid[1], 0];
+  if (dot(normal, outward) < 0) {
+    normal = scale(normal, -1);
+    uHat = scale(uHat, -1);
   }
 
-  const angle = (Math.PI / 180) * 90 * index;
-  const c = Math.cos(angle), s = Math.sin(angle);
-  const rotZ = (v) => [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]];
-
-  const uHat = rotZ(uHat0);
-  const vHat = rotZ(vHat0);
-  const normal = rotZ(normal0);
-  const bottomMidR = rotZ(bottomMid);
-
+  const topEdgeLen = norm(sub(t1, t0));
   const margin = spec.emojiMarginFraction ?? 0.18;
-  const usableWidth = 2 * ht * (1 - margin);
-  const usableHeight = vLen0 * (1 - 2 * margin);
-  const vOffset = vLen0 * margin;
+  const usableWidth = topEdgeLen * (1 - margin);
+  const usableHeight = vLen * (1 - 2 * margin);
+  const vOffset = vLen * margin;
 
-  const origin = add(bottomMidR, scale(vHat, vOffset));
+  const origin = add(bottomMid, scale(vHat, vOffset));
 
   return {
-    name: SIDE_FACE_NAMES[index % 4],
+    name: faceNames(n)[index],
     origin, uHat, vHat, normal,
     uExtent: usableWidth,
     vExtent: usableHeight,
   };
 }
 
-export function allSideFaceFrames(spec) {
-  return [0, 1, 2, 3].map((i) => faceFrame(spec, i));
+export function allSideFaceFrames(spec, segmentIndex) {
+  return Array.from({ length: spec.numSides }, (_, i) => faceFrame(spec, i, segmentIndex));
 }
 
 /**
@@ -105,7 +129,6 @@ export function stampMesh(frame, heightmap, n, { depth, baseSkin, mode, scale: u
   const us = linspace(-uExtent / 2, uExtent / 2, n);
   const vs = linspace(0, vExtent, n);
 
-  // origen desplazado para centrar la franja utilizable (igual que Python)
   const origin = add(frame.origin, scale(frame.vHat, (frame.vExtent - vExtent) / 2));
 
   const toWorld = (u, v, w) => [
@@ -114,14 +137,12 @@ export function stampMesh(frame, heightmap, n, { depth, baseSkin, mode, scale: u
     origin[2] + u * frame.uHat[2] + v * frame.vHat[2] + w * frame.normal[2],
   ];
 
-  // La fila 0 del heightmap es la parte superior del dibujo, pero v=0 es la
-  // parte INFERIOR de la cara -> se recorre en orden inverso de filas.
   const nTop = n * n;
   const vertices = new Float32Array(2 * nTop * 3);
   const idx = (i, j, layer) => layer * nTop + i * n + j;
 
   for (let i = 0; i < n; i++) {
-    const imgRow = n - 1 - i; // flip vertical
+    const imgRow = n - 1 - i; // fila 0 = arriba del dibujo, v=0 = abajo de la cara
     for (let j = 0; j < n; j++) {
       const hval = heightmap[imgRow * n + j];
       const d = hval * depth;
@@ -151,8 +172,6 @@ export function stampMesh(frame, heightmap, n, { depth, baseSkin, mode, scale: u
     }
   }
 
-  // Perímetro en un único bucle (evita inconsistencias de bobinado en las
-  // esquinas — ver el comentario detallado en engrave.py).
   const perim = [];
   for (let j = 0; j < n; j++) perim.push([0, j]);
   for (let i = 1; i < n; i++) perim.push([i, n - 1]);
@@ -170,21 +189,28 @@ export function stampMesh(frame, heightmap, n, { depth, baseSkin, mode, scale: u
   return { vertices, faces: Uint32Array.from(faces) };
 }
 
+/**
+ * Agujero escalonado para el tornillo: un tramo ancho (holeDiameter, desde
+ * la cara superior hasta `stopDepth` mm de profundidad) y, a partir de ahí,
+ * un tramo estrecho (stopDiameter) que hace de tope, hasta el final de la
+ * pieza.
+ */
 export function cylinderHoles(spec) {
-  const holes = [];
-  if (!spec.holeEnabled || spec.holeDiameter <= 0) return holes;
+  if (!spec.holeEnabled) return [];
+  const height = spec.rings[spec.rings.length - 1].z;
   const eps = 1.0;
-  holes.push({ radius: spec.holeDiameter / 2, z0: -eps, z1: spec.height + eps });
-  if (spec.headDiameter > spec.holeDiameter && spec.headDepth > 0) {
-    holes.push({ radius: spec.headDiameter / 2, z0: spec.height - spec.headDepth, z1: spec.height + eps });
-  }
-  return holes;
+  return [
+    { radius: spec.stopDiameter / 2, z0: -eps, z1: height + eps },
+    { radius: spec.holeDiameter / 2, z0: height - spec.stopDepth, z1: height + eps },
+  ];
 }
 
 // --- utilidades vectoriales ---
 function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
 function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
 function scale(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function midpoint(a, b) { return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]; }
+function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
 function norm(a) { return Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]); }
 function normalize(a) { const n = norm(a); return [a[0] / n, a[1] / n, a[2] / n]; }
 function cross(a, b) {
