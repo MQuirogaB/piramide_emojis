@@ -89,19 +89,44 @@ export function faceFrame(spec, index, segmentIndex = spec.rings.length - 2) {
     uHat = scale(uHat, -1);
   }
 
+  // La cara es un trapecio (ancho abajo, estrecho arriba). El emoji es
+  // redondo, así que se coloca en el mayor círculo inscrito en el trapecio
+  // y el sello es SIEMPRE cuadrado (sin deformar el emoji).
+  const bottomEdgeLen = norm(sub(b1, b0));
   const topEdgeLen = norm(sub(t1, t0));
-  const margin = spec.emojiMarginFraction ?? 0.18;
-  const usableWidth = topEdgeLen * (1 - margin);
-  const usableHeight = vLen * (1 - 2 * margin);
-  const vOffset = vLen * margin;
+  const margin = spec.emojiMarginFraction ?? 0.08;
 
-  const origin = add(bottomMid, scale(vHat, vOffset));
+  // Pendiente de cada lado inclinado: cuánto se estrecha por mm de altura.
+  const slope = (bottomEdgeLen - topEdgeLen) / 2 / vLen;
+  const slopeNorm = Math.sqrt(1 + slope * slope);
+  // Radio del círculo centrado a altura v: limitado por los lados
+  // inclinados, la base y el borde superior de la cara.
+  const radiusAt = (v) => Math.min(
+    (bottomEdgeLen / 2 - slope * v) / slopeNorm,
+    v,
+    vLen - v,
+  );
+  let bestV = vLen / 2, bestR = 0;
+  const steps = 2000;
+  for (let i = 0; i <= steps; i++) {
+    const v = (vLen * i) / steps;
+    const r = radiusAt(v);
+    if (r > bestR) { bestR = r; bestV = v; }
+  }
+
+  // El glifo del emoji ocupa ~85 % del lado del canvas cuadrado: se
+  // dimensiona el lado para que el glifo llene el círculo inscrito menos
+  // el margen (escala 1 = máximo; la escala por cara lo reduce).
+  const GLYPH_FILL = 0.85;
+  const side = (2 * bestR * (1 - margin)) / GLYPH_FILL;
+
+  const origin = add(bottomMid, scale(vHat, bestV - side / 2));
 
   return {
     name: faceNames(n)[index],
     origin, uHat, vHat, normal,
-    uExtent: usableWidth,
-    vExtent: usableHeight,
+    uExtent: side,
+    vExtent: side,
   };
 }
 

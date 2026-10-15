@@ -149,7 +149,7 @@ function readSpec() {
   return {
     numSides: NUM_SIDES,
     rings: RINGS,
-    emojiMarginFraction: 0.18,
+    emojiMarginFraction: 0.08,
     holeEnabled: el("holeEnabled").checked,
     holeDiameter: Number(el("holeDiaNum").value),
     stopDiameter: STOP_DIAMETER,
