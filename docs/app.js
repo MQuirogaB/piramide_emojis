@@ -45,9 +45,12 @@ function setStatus(msg, isError = false) {
 }
 
 // --- estado de los emojis por cara ---
+// La escala que ve el usuario es relativa: 1 equivale a SCALE_REFERENCE
+// (0,9 del tamaño máximo del emoji en la cara). Sirve de referencia.
+const SCALE_REFERENCE = 0.9;
 const faceState = {}; // { [faceName]: { emoji, depth, scale } }
 for (const name of FACE_NAMES) {
-  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 1.5, scale: 0.7 };
+  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 1.5, scale: 1 };
 }
 
 function buildEmojiGrid(onPick) {
@@ -98,7 +101,7 @@ function buildFaceCard(label, state, onChange) {
   miniRow.className = "mini-row";
   miniRow.innerHTML = `
     <div><label>Profundidad (mm)</label><input type="number" min="0" max="4" step="0.1" value="${state.depth}"></div>
-    <div><label>Escala (0-1)</label><input type="number" min="0.1" max="1" step="0.05" value="${state.scale}"></div>
+    <div><label>Escala (1 = referencia)</label><input type="number" min="0.1" max="1.1" step="0.05" value="${state.scale}"></div>
   `;
   const [depthInput, scaleInput] = miniRow.querySelectorAll("input");
   depthInput.addEventListener("input", () => { state.depth = Number(depthInput.value); onChange(); });
@@ -422,7 +425,7 @@ async function generate() {
         depth: faceSpec.depth,
         baseSkin: 0.05,
         mode,
-        scale: faceSpec.scale,
+        scale: Math.min(1, faceSpec.scale * SCALE_REFERENCE),
       });
       const stamp = track(manifoldFromArrays(sv, sf));
       solid = track(mode === "engrave" ? solid.subtract(stamp) : solid.add(stamp));
