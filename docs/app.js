@@ -42,7 +42,7 @@ function setStatus(msg, isError = false) {
 // --- estado de los emojis por cara ---
 const faceState = {}; // { [faceName]: { emoji, depth, scale } }
 for (const name of FACE_NAMES) {
-  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 0.8, scale: 1 };
+  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 1.5, scale: 0.7 };
 }
 
 function buildEmojiGrid(onPick) {
