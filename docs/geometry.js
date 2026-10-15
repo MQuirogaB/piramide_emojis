@@ -94,7 +94,7 @@ export function faceFrame(spec, index, segmentIndex = spec.rings.length - 2) {
   // y el sello es SIEMPRE cuadrado (sin deformar el emoji).
   const bottomEdgeLen = norm(sub(b1, b0));
   const topEdgeLen = norm(sub(t1, t0));
-  const margin = spec.emojiMarginFraction ?? 0.08;
+  const margin = spec.emojiMarginFraction ?? 0.05;
 
   // Pendiente de cada lado inclinado: cuánto se estrecha por mm de altura.
   const slope = (bottomEdgeLen - topEdgeLen) / 2 / vLen;
@@ -117,7 +117,7 @@ export function faceFrame(spec, index, segmentIndex = spec.rings.length - 2) {
   // El glifo del emoji ocupa ~85 % del lado del canvas cuadrado: se
   // dimensiona el lado para que el glifo llene el círculo inscrito menos
   // el margen (escala 1 = máximo; la escala por cara lo reduce).
-  const GLYPH_FILL = 0.85;
+  const GLYPH_FILL = 0.8;
   const side = (2 * bestR * (1 - margin)) / GLYPH_FILL;
 
   const origin = add(bottomMid, scale(vHat, bestV - side / 2));

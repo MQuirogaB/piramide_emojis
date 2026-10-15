@@ -42,7 +42,7 @@ function setStatus(msg, isError = false) {
 // --- estado de los emojis por cara ---
 const faceState = {}; // { [faceName]: { emoji, depth, scale } }
 for (const name of FACE_NAMES) {
-  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 0.8, scale: 0.85 };
+  faceState[name] = { emoji: DEFAULT_EMOJI, depth: 0.8, scale: 1 };
 }
 
 function buildEmojiGrid(onPick) {
@@ -149,7 +149,7 @@ function readSpec() {
   return {
     numSides: NUM_SIDES,
     rings: RINGS,
-    emojiMarginFraction: 0.08,
+    emojiMarginFraction: 0.05,
     holeEnabled: el("holeEnabled").checked,
     holeDiameter: Number(el("holeDiaNum").value),
     stopDiameter: STOP_DIAMETER,
