@@ -1,0 +1,168 @@
+/* Estética de miguelquiroga.es: fondo blanco tipo Notion, tinta cálida,
+   acento violeta, títulos en serif y UI en sans. */
+
+:root {
+  --bg: #ffffff;
+  --ink: #37352f;
+  --ink-light: #6b6a66;
+  --border: #e9e8e4;
+  --card-bg: #fbfbfa;
+
+  --accent: #9a6bb4;
+  --accent-dark: #7d5695;
+  --accent-soft: #f3ecf8;
+  --accent-soft2: #e9ddf0;
+
+  --rose: #a8496b;
+  --rose-soft: #f8e9ef;
+
+  --font-serif: Georgia, "Iowan Old Style", "Palatino Linotype", ui-serif, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --max-w: 1280px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 2px; }
+
+.wrap { max-width: var(--max-w); margin: 0 auto; padding: 32px 24px 64px; }
+
+h1 { font-family: var(--font-serif); font-size: 30px; font-weight: 700; margin: 0 0 4px; }
+.subtitle { font-size: 14.5px; color: var(--ink-light); margin: 0 0 24px; max-width: 720px; }
+
+/* ---------- maquetación ---------- */
+
+.layout { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+.col-viewport { position: sticky; top: 16px; }
+@media (max-width: 960px) { .col-viewport { position: static; order: -1; } }
+
+/* ---------- tarjetas ---------- */
+
+.card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+}
+.card-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-light); margin: 0 0 12px;
+}
+.note { font-size: 12px; color: var(--ink-light); margin: 10px 0 0; line-height: 1.5; }
+
+/* ---------- formularios ---------- */
+
+.row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.row label { flex: 1 1 auto; font-size: 13px; color: var(--ink); }
+.row input[type="number"], .row select { flex: 0 0 auto; }
+input[type="number"], select {
+  font: inherit; font-size: 14px; color: var(--ink); background: #fff;
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+}
+input[type="number"] { width: 84px; }
+select { max-width: 100%; }
+.row select { width: 100%; }
+input[type="range"] { flex: 1 1 auto; min-width: 0; padding: 0; accent-color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: 13px; }
+.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+.fixed-dims {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px;
+  font-size: 13px; color: var(--ink-light);
+}
+.fixed-dims b { color: var(--ink); font-weight: 600; }
+
+details.advanced { margin-top: 10px; }
+details.advanced summary {
+  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-dark);
+  margin: 2px 0 8px;
+}
+
+/* ---------- caras y selector de emoji ---------- */
+
+.face-card {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; margin-bottom: 10px;
+}
+.face-card .face-name {
+  font-size: 12px; font-weight: 700; margin: 0 0 8px;
+  color: var(--accent-dark); text-transform: capitalize;
+}
+.emoji-picker-btn {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 26px; padding: 8px;
+  background: var(--accent-soft); border: 1px solid var(--accent-soft2);
+  border-radius: 8px; cursor: pointer; color: var(--ink);
+  transition: background .15s;
+}
+.emoji-picker-btn:hover { background: var(--accent-soft2); }
+.emoji-picker-btn .hint { font-size: 12px; color: var(--ink-light); }
+.emoji-grid {
+  display: none; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  margin-top: 8px; max-height: 160px; overflow-y: auto;
+  background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 6px;
+}
+.emoji-grid.open { display: grid; }
+.emoji-grid button {
+  font-size: 19px; background: transparent; border: none;
+  border-radius: 6px; padding: 4px 0; cursor: pointer;
+}
+.emoji-grid button:hover { background: var(--accent-soft); }
+
+.mini-row { display: flex; gap: 8px; margin-top: 8px; }
+.mini-row > div { flex: 1; }
+.mini-row label { display: block; font-size: 11.5px; color: var(--ink-light); margin-bottom: 3px; }
+.mini-row input { width: 100%; }
+
+/* ---------- botones ---------- */
+
+.btn {
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink); transition: background .15s;
+}
+.btn:hover:not(:disabled) { background: var(--card-bg); }
+.btn:active:not(:disabled) { transform: scale(.98); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+#generate-btn:disabled { cursor: wait; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-dark); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.actions .btn { flex: 1 1 auto; }
+
+#status { font-size: 12.5px; color: var(--ink-light); margin-top: 10px; min-height: 36px; white-space: pre-line; }
+#status.error { color: var(--rose); }
+
+/* ---------- visor 3D ---------- */
+
+.viewport-card {
+  position: relative; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 30%, #fbfaf9 0%, #f3f0f5 60%, #ebe5f0 100%);
+  height: 560px;
+}
+@media (max-width: 960px) { .viewport-card { height: 360px; } }
+#canvas-holder { width: 100%; height: 100%; }
+#canvas-holder canvas { display: block; width: 100%; height: 100%; }
+#stats, #hint {
+  position: absolute; font-size: 12px; color: var(--ink-light);
+  background: rgba(255,255,255,.85); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 8px; pointer-events: none;
+}
+#stats { right: 12px; top: 12px; text-align: right; }
+#stats:empty { display: none; }
+#hint { left: 12px; bottom: 12px; }
+
+.foot {
+  text-align: center; color: var(--ink-light); font-size: 13px;
+  padding: 28px; border-top: 1px solid var(--border);
+}
+.foot a { color: var(--accent-dark); }

@@ -163,12 +163,12 @@ function readSpec() {
 
 const holder = el("canvas-holder");
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f1115);
 
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 2000);
 camera.position.set(60, 45, 75);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setClearColor(0x000000, 0); // el degradado lo pone el CSS
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 holder.appendChild(renderer.domElement);
 
@@ -185,7 +185,7 @@ fill.position.set(-60, 30, -40);
 scene.add(fill);
 
 const material = new THREE.MeshStandardMaterial({
-  color: 0xf2c94c, roughness: 0.55, metalness: 0.05,
+  color: 0x9a6bb4, roughness: 0.6, metalness: 0.03,
 });
 
 const displayGroup = new THREE.Group();

@@ -5,332 +5,84 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pirámide-emoji · generador online</title>
 <meta name="description" content="Genera la pirámide triangular con agujero escalonado para tornillo y emojis grabados en las caras, directamente en el navegador, sin instalar nada.">
-<style>
-  :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --panel-2: #1f232c;
-    --panel-3: #262b36;
-    --border: #2a2f3a;
-    --text: #e8eaed;
-    --muted: #9aa2b1;
-    --accent: #f2c94c;
-    --accent-2: #f7d774;
-    --danger: #e5534b;
-    --radius: 10px;
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  #app {
-    display: grid;
-    grid-template-columns: 380px 1fr;
-    height: 100vh;
-  }
-  @media (max-width: 860px) {
-    #app { grid-template-columns: 1fr; grid-template-rows: auto 60vh; height: auto; min-height: 100vh; }
-  }
-  #panel {
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-    padding: 20px;
-    overflow-y: auto;
-  }
-  #viewport-col {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-  h1 {
-    font-size: 17px;
-    margin: 0 0 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  h1 .emoji { font-size: 20px; }
-  .subtitle {
-    color: var(--muted);
-    font-size: 12.5px;
-    margin: 0 0 18px;
-    line-height: 1.4;
-  }
-  .subtitle a { color: var(--accent-2); }
-  fieldset {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 14px 14px;
-    margin: 0 0 14px;
-  }
-  legend {
-    font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--muted);
-    padding: 0 6px;
-  }
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0;
-  }
-  .row label {
-    flex: 0 0 150px;
-    font-size: 12.5px;
-    color: var(--muted);
-  }
-  .row input[type="number"] {
-    width: 72px;
-  }
-  input, select {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 6px;
-    padding: 6px 8px;
-    font-size: 13px;
-  }
-  select { width: 100%; }
-  input[type="range"] { flex: 1; padding: 0; accent-color: var(--accent); }
-
-  .fixed-dims {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 12px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .fixed-dims b { color: var(--text); font-weight: 600; }
-  .fixed-note {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 8px;
-    line-height: 1.4;
-  }
-
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0;
-  }
-  .toggle-row label { font-size: 12.5px; color: var(--muted); }
-
-  .fixed-hole-note {
-    font-size: 11.5px;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-
-  .face-card {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 8px;
-    background: var(--panel-2);
-  }
-  .face-card .face-name {
-    font-size: 12px;
-    font-weight: 600;
-    margin: 0 0 8px;
-    color: var(--accent-2);
-    text-transform: capitalize;
-  }
-  .emoji-picker-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 26px;
-    padding: 8px;
-    background: var(--panel-3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    color: var(--text);
-  }
-  .emoji-picker-btn .hint {
-    font-size: 11px;
-    color: var(--muted);
-  }
-  .emoji-grid {
-    display: none;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
-    margin-top: 8px;
-    max-height: 160px;
-    overflow-y: auto;
-    background: var(--panel-3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px;
-  }
-  .emoji-grid.open { display: grid; }
-  .emoji-grid button {
-    font-size: 19px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    padding: 4px 0;
-    cursor: pointer;
-  }
-  .emoji-grid button:hover { background: var(--panel-2); }
-
-  .mini-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-  }
-  .mini-row > div { flex: 1; }
-  .mini-row label {
-    display: block;
-    font-size: 10.5px;
-    color: var(--muted);
-    margin-bottom: 3px;
-  }
-  .mini-row input { width: 100%; }
-
-  button.action {
-    font: inherit;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    padding: 11px 14px;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  #generate-btn {
-    width: 100%;
-    background: var(--accent);
-    color: #1a1608;
-    margin-top: 4px;
-  }
-  #generate-btn:disabled { opacity: .55; cursor: wait; }
-  #download-btn {
-    width: 100%;
-    margin-top: 8px;
-    background: var(--panel-2);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  #download-btn:disabled { opacity: .4; cursor: not-allowed; }
-  #status {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 10px;
-    min-height: 32px;
-    line-height: 1.4;
-    white-space: pre-line;
-  }
-  #status.error { color: var(--danger); }
-  #viewport {
-    flex: 1;
-    position: relative;
-    min-height: 0;
-  }
-  #canvas-holder { width: 100%; height: 100%; display: block; }
-  #hint {
-    position: absolute;
-    left: 14px;
-    bottom: 12px;
-    font-size: 11.5px;
-    color: var(--muted);
-    background: rgba(15,17,21,.6);
-    padding: 4px 8px;
-    border-radius: 6px;
-    pointer-events: none;
-  }
-  #stats {
-    position: absolute;
-    right: 14px;
-    top: 12px;
-    font-size: 11.5px;
-    color: var(--muted);
-    background: rgba(15,17,21,.6);
-    padding: 6px 10px;
-    border-radius: 6px;
-    text-align: right;
-  }
-  details.advanced summary {
-    cursor: pointer;
-    font-size: 12px;
-    color: var(--muted);
-    margin: 2px 0 8px;
-  }
-</style>
+<meta name="theme-color" content="#9a6bb4">
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<div id="app">
-  <div id="panel">
-    <h1><span class="emoji">🔺</span> Pirámide-emoji</h1>
-    <p class="subtitle">
-      Pirámide triangular con agujero escalonado para tornillo y un emoji
-      grabado en cada cara — todo en tu navegador, sin subir nada a ningún
-      servidor.
-      <a href="https://github.com/MQuirogaB/piramide_emojis" target="_blank" rel="noopener">Ver código ↗</a>
-    </p>
 
-    <fieldset>
-      <legend>Geometría (fija)</legend>
-      <div class="fixed-dims">
-        <span>Base</span><b>33.6 mm</b>
-        <span>Reborde</span><b>40.7 mm (a 3.9 mm)</b>
-        <span>Cara superior</span><b>11.9 mm</b>
-        <span>Altura total</span><b>27.51 mm</b>
-      </div>
-      <p class="fixed-note">Medidas calcadas del diseño de referencia; no son editables.</p>
-    </fieldset>
+<main class="wrap">
+  <h1>Pirámide-emoji</h1>
+  <p class="subtitle">
+    Pirámide triangular con agujero escalonado para tornillo y un emoji
+    grabado en cada cara. Todo ocurre en tu navegador: no se sube nada a ningún servidor.
+  </p>
 
-    <fieldset>
-      <legend>Agujero para el tornillo</legend>
-      <div class="toggle-row">
-        <input type="checkbox" id="holeEnabled" checked>
-        <label for="holeEnabled">Generar agujero</label>
-      </div>
-      <div class="row"><label for="holeDia">Diámetro alojamiento (mm)</label><input type="range" id="holeDia" min="2" max="12" step="0.1" value="6"><input type="number" id="holeDiaNum" min="2" max="12" step="0.1" value="6"></div>
-      <p class="fixed-hole-note">A 25.5 mm de profundidad el agujero pasa a 3 mm de diámetro (tope fijo).</p>
-    </fieldset>
+  <div class="layout">
+    <div class="col-controls">
 
-    <fieldset>
-      <legend>Emojis por cara</legend>
-      <div class="row">
-        <label for="emojiMode">Modo</label>
-        <select id="emojiMode">
-          <option value="same" selected>Mismo emoji en las 3 caras</option>
-          <option value="different">Emoji distinto por cara</option>
-        </select>
+      <div class="card">
+        <p class="card-label">Geometría (fija)</p>
+        <div class="fixed-dims">
+          <span>Base</span><b>33.6 mm</b>
+          <span>Reborde</span><b>40.7 mm (a 3.9 mm)</b>
+          <span>Cara superior</span><b>11.9 mm</b>
+          <span>Altura total</span><b>27.51 mm</b>
+        </div>
+        <p class="note">Medidas calcadas del diseño de referencia; no son editables.</p>
       </div>
-      <div id="faces"></div>
-      <details class="advanced">
-        <summary>Ajustes avanzados del grabado</summary>
-        <div class="row"><label for="mode">Estilo</label>
-          <select id="mode">
-            <option value="engrave" selected>Grabado (hundido)</option>
-            <option value="emboss">Repujado (relieve)</option>
+
+      <div class="card">
+        <p class="card-label">Agujero para el tornillo</p>
+        <div class="check">
+          <input type="checkbox" id="holeEnabled" checked>
+          <label for="holeEnabled">Generar agujero</label>
+        </div>
+        <div class="row"><label for="holeDia">Diámetro alojamiento (mm)</label><input type="range" id="holeDia" min="2" max="12" step="0.1" value="6"><input type="number" id="holeDiaNum" min="2" max="12" step="0.1" value="6"></div>
+        <p class="note">A 25.5 mm de profundidad el agujero pasa a 3 mm de diámetro (tope fijo).</p>
+      </div>
+
+      <div class="card">
+        <p class="card-label">Emojis por cara</p>
+        <div class="row">
+          <label for="emojiMode">Modo</label>
+          <select id="emojiMode">
+            <option value="same" selected>Mismo emoji en las 3 caras</option>
+            <option value="different">Emoji distinto por cara</option>
           </select>
         </div>
-        <div class="row"><label for="resolution">Resolución</label><input type="range" id="resolution" min="32" max="140" step="4" value="80"><input type="number" id="resolutionNum" min="32" max="140" value="80"></div>
-      </details>
-    </fieldset>
+        <div id="faces"></div>
+        <details class="advanced">
+          <summary>Ajustes avanzados del grabado</summary>
+          <div class="row"><label for="mode">Estilo</label>
+            <select id="mode">
+              <option value="engrave" selected>Grabado (hundido)</option>
+              <option value="emboss">Repujado (relieve)</option>
+            </select>
+          </div>
+          <div class="row"><label for="resolution">Resolución</label><input type="range" id="resolution" min="32" max="140" step="4" value="80"><input type="number" id="resolutionNum" min="32" max="140" value="80"></div>
+        </details>
+      </div>
 
-    <button class="action" id="generate-btn" disabled>Generar pirámide</button>
-    <button class="action" id="download-btn" disabled>Descargar STL</button>
-    <div id="status">Cargando el motor 3D…</div>
-  </div>
+      <div class="actions">
+        <button class="btn primary" id="generate-btn" type="button" disabled>Generar pirámide</button>
+        <button class="btn" id="download-btn" type="button" disabled>Descargar STL</button>
+      </div>
+      <div id="status" role="status">Cargando el motor 3D…</div>
+    </div>
 
-  <div id="viewport-col">
-    <div id="viewport">
-      <div id="canvas-holder"></div>
-      <div id="stats"></div>
-      <div id="hint">Arrastra para rotar · rueda para zoom</div>
+    <div class="col-viewport">
+      <div class="viewport-card">
+        <div id="canvas-holder"></div>
+        <div id="stats"></div>
+        <div id="hint">Arrastra para rotar · rueda para zoom</div>
+      </div>
     </div>
   </div>
-</div>
+</main>
+
+<footer class="foot">
+  <p>Hecho con ♥ para el aula · <a href="https://miguelquiroga.es">miguelquiroga.es</a></p>
+</footer>
 
 <script type="importmap">
 {
