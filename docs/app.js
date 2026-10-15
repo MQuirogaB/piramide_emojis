@@ -2,22 +2,27 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import ManifoldModule from "manifold-3d";
 
-import { frustumMesh, allSideFaceFrames, stampMesh, cylinderHoles, faceNames } from "./geometry.js";
+import {
+  frustumMesh, allSideFaceFrames, stampMesh, cylinderHoles, faceNames,
+  roundedHullPoints, maxCornerRadius,
+} from "./geometry.js";
 import { emojiHeightmap } from "./emoji.js";
 import { EMOJI_PALETTE } from "./emoji-palette.js";
 
 // ---------------------------------------------------------------------
-// Especificación fija de la pirámide (calcada del STL de referencia del
-// usuario). No es editable desde la UI a propósito.
+// Medidas de la pirámide. Los valores por defecto están calcados del STL
+// de referencia; se pueden editar con el botón «Editar medidas».
 // ---------------------------------------------------------------------
 
 const NUM_SIDES = 3;
-const RINGS = [
-  { size: 33.6, z: 0 },     // base (con el pequeño reborde)
-  { size: 40.7, z: 3.92 },  // punto más ancho del reborde
-  { size: 11.9, z: 27.51 }, // cara superior truncada
-];
-const HEIGHT = RINGS[RINGS.length - 1].z;
+const DEFAULT_DIMS = {
+  base: 33.6,     // lado del triángulo en la base
+  ridge: 40.7,    // lado en el punto más ancho del reborde
+  ridgeZ: 3.92,   // altura a la que está el reborde
+  top: 11.9,      // lado de la cara superior truncada
+  height: 27.51,  // altura total
+  round: 1.5,     // radio de redondeo de aristas y vértices (mm)
+};
 const STOP_DIAMETER = 3;   // mm, tramo estrecho fijo ("tope")
 const STOP_DEPTH = 25.5;   // mm, profundidad a la que empieza el tope
 
@@ -145,16 +150,92 @@ function linkRangeNumber(rangeId, numId) {
 linkRangeNumber("holeDia", "holeDiaNum");
 linkRangeNumber("resolution", "resolutionNum");
 
+// --- medidas de la pirámide (resumen + modo edición) ---
+const DIM_INPUTS = {
+  base: el("dimBase"),
+  ridge: el("dimRidge"),
+  ridgeZ: el("dimRidgeZ"),
+  top: el("dimTop"),
+  height: el("dimHeight"),
+  round: el("dimRound"),
+};
+const dimsEditBox = el("dims-edit");
+const dimsEditBtn = el("dims-edit-btn");
+const dimsResetBtn = el("dims-reset-btn");
+
+const fmt = (x) => String(Math.round(x * 100) / 100);
+
+function setDimInputs(dims) {
+  for (const [key, input] of Object.entries(DIM_INPUTS)) input.value = dims[key];
+}
+
+function currentDimsRaw() {
+  const out = {};
+  for (const [key, input] of Object.entries(DIM_INPUTS)) out[key] = Number(input.value);
+  return out;
+}
+
+function renderDimsSummary() {
+  const d = currentDimsRaw();
+  el("sum-base").textContent = `${fmt(d.base)} mm`;
+  el("sum-ridge").textContent = `${fmt(d.ridge)} mm (a ${fmt(d.ridgeZ)} mm)`;
+  el("sum-top").textContent = `${fmt(d.top)} mm`;
+  el("sum-height").textContent = `${fmt(d.height)} mm`;
+  el("sum-round").textContent = d.round > 0 ? `${fmt(d.round)} mm` : "sin redondear";
+}
+
+setDimInputs(DEFAULT_DIMS);
+renderDimsSummary();
+for (const input of Object.values(DIM_INPUTS)) input.addEventListener("input", renderDimsSummary);
+
+dimsEditBtn.addEventListener("click", () => {
+  const editing = dimsEditBox.hidden;
+  dimsEditBox.hidden = !editing;
+  dimsResetBtn.hidden = !editing;
+  dimsEditBtn.textContent = editing ? "Listo" : "Editar medidas";
+});
+dimsResetBtn.addEventListener("click", () => {
+  setDimInputs(DEFAULT_DIMS);
+  renderDimsSummary();
+});
+
+/** Lee y valida las medidas; devuelve { spec } o { error }. */
 function readSpec() {
-  return {
+  const d = currentDimsRaw();
+  for (const [key, v] of Object.entries(d)) {
+    if (!Number.isFinite(v)) return { error: "Hay una medida vacía o no válida. Revisa los campos de «Editar medidas»." };
+    if (v < 0 || (key !== "round" && v === 0)) return { error: "Las medidas tienen que ser positivas." };
+  }
+  if (d.height < 8) return { error: "La altura total tiene que ser de al menos 8 mm." };
+  if (d.ridgeZ < 0.5 || d.ridgeZ > d.height - 1) {
+    return { error: "La altura del reborde tiene que estar entre 0,5 mm y 1 mm por debajo de la altura total." };
+  }
+  if (d.ridge < d.base || d.ridge < d.top) {
+    return { error: "El reborde tiene que ser la parte más ancha (mayor o igual que la base y la cara superior)." };
+  }
+
+  const spec = {
     numSides: NUM_SIDES,
-    rings: RINGS,
+    rings: [
+      { size: d.base, z: 0 },
+      { size: d.ridge, z: d.ridgeZ },
+      { size: d.top, z: d.height },
+    ],
     emojiMarginFraction: 0.05,
+    cornerRadius: d.round,
     holeEnabled: el("holeEnabled").checked,
     holeDiameter: Number(el("holeDiaNum").value),
     stopDiameter: STOP_DIAMETER,
-    stopDepth: STOP_DEPTH,
+    stopDepth: Math.min(STOP_DEPTH, d.height - 2),
   };
+
+  if (d.round > 0) {
+    const maxR = maxCornerRadius({ ...spec, cornerRadius: 0 });
+    if (d.round > maxR * 0.95) {
+      return { error: `El radio de redondeo es demasiado grande para estas medidas (máximo ${fmt(maxR * 0.95)} mm).` };
+    }
+  }
+  return { spec };
 }
 
 // ---------------------------------------------------------------------
@@ -295,7 +376,11 @@ function yieldToUI() {
 }
 
 async function generate() {
-  const spec = readSpec();
+  const { spec, error } = readSpec();
+  if (error) {
+    setStatus(error, true);
+    return;
+  }
   const faces = readActiveFaces();
   const mode = el("mode").value;
   const resolution = Number(el("resolutionNum").value);
@@ -308,8 +393,14 @@ async function generate() {
     setStatus("Construyendo el sólido de la pirámide…");
     await yieldToUI();
 
-    const { vertices, faces: idxs } = frustumMesh(spec);
-    let solid = track(manifoldFromArrays(vertices, idxs));
+    let solid;
+    if (spec.cornerRadius > 0) {
+      // aristas y vértices redondeados: envolvente convexa de esferas
+      solid = track(ManifoldCls.hull(roundedHullPoints(spec, spec.cornerRadius)));
+    } else {
+      const { vertices, faces: idxs } = frustumMesh(spec);
+      solid = track(manifoldFromArrays(vertices, idxs));
+    }
 
     for (const hole of cylinderHoles(spec)) {
       setStatus("Taladrando el agujero del tornillo…");

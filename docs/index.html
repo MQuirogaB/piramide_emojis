@@ -21,14 +21,27 @@
     <div class="col-controls">
 
       <div class="card">
-        <p class="card-label">Geometría (fija)</p>
-        <div class="fixed-dims">
-          <span>Base</span><b>33.6 mm</b>
-          <span>Reborde</span><b>40.7 mm (a 3.9 mm)</b>
-          <span>Cara superior</span><b>11.9 mm</b>
-          <span>Altura total</span><b>27.51 mm</b>
+        <p class="card-label">Medidas de la pirámide</p>
+        <div class="fixed-dims" id="dims-summary">
+          <span>Base</span><b id="sum-base"></b>
+          <span>Reborde</span><b id="sum-ridge"></b>
+          <span>Cara superior</span><b id="sum-top"></b>
+          <span>Altura total</span><b id="sum-height"></b>
+          <span>Redondeo</span><b id="sum-round"></b>
         </div>
-        <p class="note">Medidas calcadas del diseño de referencia; no son editables.</p>
+        <div id="dims-edit" hidden>
+          <div class="row"><label for="dimBase">Base (mm)</label><input type="number" id="dimBase" min="5" max="120" step="0.1"></div>
+          <div class="row"><label for="dimRidge">Reborde: anchura (mm)</label><input type="number" id="dimRidge" min="5" max="150" step="0.1"></div>
+          <div class="row"><label for="dimRidgeZ">Reborde: altura (mm)</label><input type="number" id="dimRidgeZ" min="0.5" max="100" step="0.1"></div>
+          <div class="row"><label for="dimTop">Cara superior (mm)</label><input type="number" id="dimTop" min="2" max="120" step="0.1"></div>
+          <div class="row"><label for="dimHeight">Altura total (mm)</label><input type="number" id="dimHeight" min="8" max="200" step="0.1"></div>
+          <div class="row"><label for="dimRound">Radio de redondeo (mm, 0 = sin redondear)</label><input type="number" id="dimRound" min="0" max="9" step="0.1"></div>
+          <p class="note">Base, reborde y cara superior se miden como el lado del triángulo. El reborde tiene que ser la parte más ancha.</p>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn" id="dims-edit-btn" type="button">Editar medidas</button>
+        </div>
+        <button type="button" class="link" id="dims-reset-btn" hidden>Restaurar valores por defecto</button>
       </div>
 
       <div class="card">

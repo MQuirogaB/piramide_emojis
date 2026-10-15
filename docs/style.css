@@ -80,6 +80,12 @@ input[type="range"] { flex: 1 1 auto; min-width: 0; padding: 0; accent-color: va
 }
 .fixed-dims b { color: var(--ink); font-weight: 600; }
 
+.link {
+  font: inherit; background: none; border: none; padding: 0; margin-top: 10px;
+  color: var(--accent-dark); cursor: pointer; font-size: 12.5px; text-decoration: underline;
+}
+[hidden] { display: none !important; }
+
 details.advanced { margin-top: 10px; }
 details.advanced summary {
   cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-dark);
